@@ -1,19 +1,17 @@
 /**
  * VUSCRIPT - Blu.js (Notification & Call Alert System)
- * Được tối ưu hóa giao diện xin quyền lớn trực quan trên web và giữ nguyên các tính năng cốt lõi.
+ * Tác dụng: Xử lý thông báo tin nhắn nổi ngoài màn hình, rung và đổ chuông khi có cuộc gọi/tin nhắn.
+ * Đã được tích hợp giao diện xin quyền thông báo trực quan trên web.
  */
 
 class BluNotificationSystem {
     constructor() {
         this.audioRing = null;
-        this.initRingtone();
         this.initCustomPermissionUI();
+        this.initRingtone();
     }
 
-    /**
-     * 1. Tạo giao diện banner/popup xin quyền lớn ngay trên web (giống Zalo/Web lớn)
-     * Giúp người dùng thấy rõ ràng, không bị bỏ lỡ.
-     */
+    // 1. Tạo giao diện banner/popup xin quyền lớn ngay trên web (giống Zalo/Web lớn) để người dùng bấm là đồng ý ngay
     initCustomPermissionUI() {
         if (!("Notification" in window)) return;
 
@@ -43,7 +41,7 @@ class BluNotificationSystem {
         banner.innerHTML = `
             <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #000;">Bật thông báo & Cuộc gọi</div>
             <div style="font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.4;">
-                Hãy bấm <b>"Đồng ý"</b> để nhận thông báo tin nhắn mới và cuộc gọi đến ngay cả khi bạn thu nhỏ trình duyệt.
+                Hãy bấm <b>"Đồng ý ngay"</b> để nhận thông báo tin nhắn mới và cuộc gọi đến ngay cả khi bạn thu nhỏ hoặc chuyển tab trình duyệt.
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button id="blu-btn-deny" style="padding: 8px 14px; border: none; background: #f0f2f5; color: #555; border-radius: 6px; cursor: pointer; font-weight: 500;">Để sau</button>
@@ -66,15 +64,15 @@ class BluNotificationSystem {
 
         document.body.appendChild(banner);
 
-        // Xử lý sự kiện khi bấm nút "Đồng ý ngay"
+        // Xử lý sự kiện khi bấm nút "Đồng ý ngay" trên banner
         document.getElementById('blu-btn-allow').addEventListener('click', () => {
             Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
-                    console.log("Blu.js: Người dùng đã đồng ý cấp quyền thông báo qua giao diện.");
+                    console.log("Blu.js: Người dùng đã bấm Cho phép thông báo qua giao diện.");
                 }
                 banner.remove();
             });
-            this.unlockAudioContext();
+            this.unlockAudio();
         });
 
         // Xử lý sự kiện khi bấm "Để sau"
@@ -83,10 +81,16 @@ class BluNotificationSystem {
         });
     }
 
+    // 2. Chuẩn bị âm thanh chuông gọi[cite: 1]
+    initRingtone() {
+        this.audioRing = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+        this.audioRing.loop = true; // Lặp lại liên tục khi đang gọi[cite: 1]
+    }
+
     /**
-     * 2. Mở khóa Audio Context (tránh bị trình duyệt chặn tiếng chuông)
+     * Mở khóa âm thanh ngầm để trình duyệt không chặn chuông sau này
      */
-    unlockAudioContext() {
+    unlockAudio() {
         if (this.audioRing) {
             this.audioRing.play().then(() => {
                 this.audioRing.pause();
@@ -95,14 +99,8 @@ class BluNotificationSystem {
         }
     }
 
-    // 3. Chuẩn bị âm thanh chuông gọi[cite: 1]
-    initRingtone() {
-        this.audioRing = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
-        this.audioRing.loop = true; // Lặp lại liên tục khi đang gọi[cite: 1]
-    }
-
     /**
-     * 4. Hiển thị thông báo tin nhắn nổi ngoài màn hình (giống Zalo)[cite: 1]
+     * 3. Hiển thị thông báo tin nhắn nổi ngoài màn hình (giống Zalo)[cite: 1]
      * @param {string} sender - Tên người gửi[cite: 1]
      * @param {string} message - Nội dung tin nhắn[cite: 1]
      * @param {string} avatar - Ảnh đại diện (tuỳ chọn)[cite: 1]
@@ -127,7 +125,7 @@ class BluNotificationSystem {
     }
 
     /**
-     * 5. Kích hoạt chế độ gọi đến: Rung máy + Đổ chuông + Thông báo lớn[cite: 1]
+     * 4. Kích hoạt chế độ gọi đến: Rung máy + Đổ chuông + Thông báo lớn[cite: 1]
      * @param {string} callerName - Tên người gọi[cite: 1]
      */
     startIncomingCall(callerName) {
@@ -161,7 +159,7 @@ class BluNotificationSystem {
     }
 
     /**
-     * 6. Dừng chuông và dừng rung khi cuộc gọi kết thúc hoặc được nghe[cite: 1]
+     * 5. Dừng chuông và dừng rung khi cuộc gọi kết thúc hoặc được nghe[cite: 1]
      */
     stopIncomingCall() {
         if (this.audioRing) {
@@ -177,10 +175,19 @@ class BluNotificationSystem {
 // Khởi tạo hệ thống toàn cục[cite: 1]
 const bluSystem = new BluNotificationSystem();
 
-// Bẫy sự kiện click/chạm đầu tiên trên trang (phòng hờ trường hợp người dùng click vào bất cứ đâu trên web để mở khóa âm thanh)[cite: 1]
+// Bẫy sự kiện click/chạm đầu tiên trên trang web: Phòng hờ trường hợp người dùng tắt banner và bấm vào web để mở khóa âm thanh[cite: 1]
 document.addEventListener('click', function triggerSystemOnFirstClick() {
-    if (window.bluSystem) {
-        window.bluSystem.unlockAudioContext();
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                console.log("Blu.js: Đã cấp quyền thông báo sau cú click đầu tiên.");
+            }
+        });
     }
+    
+    if (window.bluSystem) {
+        window.bluSystem.unlockAudio();
+    }
+    
     document.removeEventListener('click', triggerSystemOnFirstClick);
 }, { once: true });
