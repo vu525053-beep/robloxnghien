@@ -1,48 +1,46 @@
 /**
- * VUSCRIPT - Blu.js (Phiên bản Popup Tùy Chỉnh Bắt Buộc Nhìn Thấy)
+ * VUSCRIPT - Blu.js (Phiên bản ép hiển thị bảng popup trực tiếp)
  */
 
 class BluNotificationSystem {
     constructor() {
         this.audioRing = null;
         this.initRingtone();
-        this.checkAndShowPermissionModal();
-    }
-
-    // Kiểm tra nếu chưa cấp quyền thì hiện bảng popup ngay giữa màn hình
-    checkAndShowPermissionModal() {
-        if (!("Notification" in window)) return;
-
-        if (Notification.permission === "default") {
+        
+        // Đợi web tải xong là ép hiện bảng ngay lập tức
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.createPermissionPopup());
+        } else {
             this.createPermissionPopup();
         }
     }
 
-    // Tạo bảng thông báo bắt buộc tương tác
+    // Tạo bảng thông báo bắt buộc hiển thị giữa màn hình
     createPermissionPopup() {
+        // Nếu đã tồn tại rồi thì thôi không tạo nữa
         if (document.getElementById('blu-custom-popup')) return;
 
         const overlay = document.createElement('div');
         overlay.id = 'blu-custom-popup';
         overlay.style.cssText = `
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 99999999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: sans-serif;
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(0, 0, 0, 0.92) !important;
+            z-index: 2147483647 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-family: sans-serif !important;
         `;
 
         overlay.innerHTML = `
-            <div style="background: #1a1a1a; border: 2px solid #00ffcc; padding: 30px; border-radius: 16px; text-align: center; max-width: 350px; width: 90%; color: #fff; box-shadow: 0 0 30px rgba(0,255,204,0.4);">
-                <div style="font-size: 45px; margin-bottom: 10px;">🔔</div>
-                <h3 style="margin: 0 0 10px 0; color: #00ffcc; font-size: 20px;">Bật Thông Báo & Cuộc Gọi</h3>
-                <p style="font-size: 14px; color: #ccc; line-height: 1.5; margin-bottom: 20px;">
+            <div style="background: #1a1a1a !important; border: 2px solid #00ffcc !important; padding: 30px !important; border-radius: 16px !important; text-align: center !important; max-width: 350px !important; width: 90% !important; color: #fff !important; box-shadow: 0 0 40px rgba(0,255,204,0.5) !important;">
+                <div style="font-size: 45px !important; margin-bottom: 10px !important;">🔔</div>
+                <h3 style="margin: 0 0 10px 0 !important; color: #00ffcc !important; font-size: 20px !important;">Bật Thông Báo & Cuộc Gọi</h3>
+                <p style="font-size: 14px !important; color: #ccc !important; line-height: 1.5 !important; margin-bottom: 20px !important;">
                     Hãy bấm nút bên dưới để cấp quyền nhận tin nhắn nổi và gọi thoại trực tiếp trên thiết bị của bạn!
                 </p>
-                <button id="blu-agree-btn" style="background: #00ffcc; color: #000; border: none; padding: 12px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 15px; width: 100%;">
+                <button id="blu-agree-btn" style="background: #00ffcc !important; color: #000 !important; border: none !important; padding: 12px 20px !important; font-weight: bold !important; border-radius: 8px !important; cursor: pointer !important; font-size: 15px !important; width: 100% !important;">
                     ĐỒNG Ý VÀ TIẾP TỤC
                 </button>
             </div>
@@ -50,15 +48,15 @@ class BluNotificationSystem {
 
         document.body.appendChild(overlay);
 
-        // Khi người dùng bấm nút này, trình duyệt sẽ lập tức hiện hộp thoại Cho Phép
+        // Khi người dùng bấm nút này
         document.getElementById('blu-agree-btn').addEventListener('click', () => {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    console.log("Đã cấp quyền thành công!");
-                }
-            });
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    console.log("Trạng thái quyền:", permission);
+                });
+            }
 
-            // Mở khóa âm thanh
+            // Mở khóa âm thanh chuông
             if (this.audioRing) {
                 this.audioRing.play().then(() => {
                     this.audioRing.pause();
@@ -111,4 +109,5 @@ class BluNotificationSystem {
     }
 }
 
+// Khởi tạo hệ thống
 const bluSystem = new BluNotificationSystem();
