@@ -1,79 +1,112 @@
 /**
- * VUSCRIPT - Blu.js (Phiên bản ép hiển thị bảng popup trực tiếp)
+ * VUSCRIPT - Blu.js (Notification & Call Alert System)
+ * Được tối ưu hóa giao diện xin quyền lớn trực quan trên web và giữ nguyên các tính năng cốt lõi.
  */
 
 class BluNotificationSystem {
     constructor() {
         this.audioRing = null;
         this.initRingtone();
-        
-        // Đợi web tải xong là ép hiện bảng ngay lập tức
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.createPermissionPopup());
-        } else {
-            this.createPermissionPopup();
-        }
+        this.initCustomPermissionUI();
     }
 
-    // Tạo bảng thông báo bắt buộc hiển thị giữa màn hình
-    createPermissionPopup() {
-        // Nếu đã tồn tại rồi thì thôi không tạo nữa
-        if (document.getElementById('blu-custom-popup')) return;
+    /**
+     * 1. Tạo giao diện banner/popup xin quyền lớn ngay trên web (giống Zalo/Web lớn)
+     * Giúp người dùng thấy rõ ràng, không bị bỏ lỡ.
+     */
+    initCustomPermissionUI() {
+        if (!("Notification" in window)) return;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'blu-custom-popup';
-        overlay.style.cssText = `
-            position: fixed !important;
-            inset: 0 !important;
-            background: rgba(0, 0, 0, 0.92) !important;
-            z-index: 2147483647 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-family: sans-serif !important;
+        // Nếu đã cấp quyền hoặc từ chối rồi thì không hiện nữa
+        if (Notification.permission !== "default") return;
+
+        // Tạo element giao diện HTML cho popup xin quyền
+        const banner = document.createElement('div');
+        banner.id = 'blu-permission-banner';
+        banner.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999999;
+            background: #ffffff;
+            color: #333333;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            max-width: 360px;
+            width: calc(100% - 40px);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            border-left: 5px solid #0068ff;
+            animation: bluSlideIn 0.4s ease-out;
         `;
 
-        overlay.innerHTML = `
-            <div style="background: #1a1a1a !important; border: 2px solid #00ffcc !important; padding: 30px !important; border-radius: 16px !important; text-align: center !important; max-width: 350px !important; width: 90% !important; color: #fff !important; box-shadow: 0 0 40px rgba(0,255,204,0.5) !important;">
-                <div style="font-size: 45px !important; margin-bottom: 10px !important;">🔔</div>
-                <h3 style="margin: 0 0 10px 0 !important; color: #00ffcc !important; font-size: 20px !important;">Bật Thông Báo & Cuộc Gọi</h3>
-                <p style="font-size: 14px !important; color: #ccc !important; line-height: 1.5 !important; margin-bottom: 20px !important;">
-                    Hãy bấm nút bên dưới để cấp quyền nhận tin nhắn nổi và gọi thoại trực tiếp trên thiết bị của bạn!
-                </p>
-                <button id="blu-agree-btn" style="background: #00ffcc !important; color: #000 !important; border: none !important; padding: 12px 20px !important; font-weight: bold !important; border-radius: 8px !important; cursor: pointer !important; font-size: 15px !important; width: 100% !important;">
-                    ĐỒNG Ý VÀ TIẾP TỤC
-                </button>
+        banner.innerHTML = `
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #000;">Bật thông báo & Cuộc gọi</div>
+            <div style="font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.4;">
+                Hãy bấm <b>"Đồng ý"</b> để nhận thông báo tin nhắn mới và cuộc gọi đến ngay cả khi bạn thu nhỏ trình duyệt.
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="blu-btn-deny" style="padding: 8px 14px; border: none; background: #f0f2f5; color: #555; border-radius: 6px; cursor: pointer; font-weight: 500;">Để sau</button>
+                <button id="blu-btn-allow" style="padding: 8px 16px; border: none; background: #0068ff; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">Đồng ý ngay</button>
             </div>
         `;
 
-        document.body.appendChild(overlay);
+        // Thêm CSS animation vào trang
+        if (!document.getElementById('blu-animations')) {
+            const style = document.createElement('style');
+            style.id = 'blu-animations';
+            style.innerHTML = `
+                @keyframes bluSlideIn {
+                    from { transform: translateY(100px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
-        // Khi người dùng bấm nút này
-        document.getElementById('blu-agree-btn').addEventListener('click', () => {
-            if ("Notification" in window) {
-                Notification.requestPermission().then(permission => {
-                    console.log("Trạng thái quyền:", permission);
-                });
-            }
+        document.body.appendChild(banner);
 
-            // Mở khóa âm thanh chuông
-            if (this.audioRing) {
-                this.audioRing.play().then(() => {
-                    this.audioRing.pause();
-                    this.audioRing.currentTime = 0;
-                }).catch(() => {});
-            }
+        // Xử lý sự kiện khi bấm nút "Đồng ý ngay"
+        document.getElementById('blu-btn-allow').addEventListener('click', () => {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    console.log("Blu.js: Người dùng đã đồng ý cấp quyền thông báo qua giao diện.");
+                }
+                banner.remove();
+            });
+            this.unlockAudioContext();
+        });
 
-            // Tắt bảng popup đi
-            overlay.remove();
+        // Xử lý sự kiện khi bấm "Để sau"
+        document.getElementById('blu-btn-deny').addEventListener('click', () => {
+            banner.remove();
         });
     }
 
-    initRingtone() {
-        this.audioRing = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
-        this.audioRing.loop = true;
+    /**
+     * 2. Mở khóa Audio Context (tránh bị trình duyệt chặn tiếng chuông)
+     */
+    unlockAudioContext() {
+        if (this.audioRing) {
+            this.audioRing.play().then(() => {
+                this.audioRing.pause();
+                this.audioRing.currentTime = 0;
+            }).catch(() => {});
+        }
     }
 
+    // 3. Chuẩn bị âm thanh chuông gọi[cite: 1]
+    initRingtone() {
+        this.audioRing = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+        this.audioRing.loop = true; // Lặp lại liên tục khi đang gọi[cite: 1]
+    }
+
+    /**
+     * 4. Hiển thị thông báo tin nhắn nổi ngoài màn hình (giống Zalo)[cite: 1]
+     * @param {string} sender - Tên người gửi[cite: 1]
+     * @param {string} message - Nội dung tin nhắn[cite: 1]
+     * @param {string} avatar - Ảnh đại diện (tuỳ chọn)[cite: 1]
+     */
     showTextMessage(sender, message, avatar = "") {
         if ("Notification" in window && Notification.permission === "granted") {
             const options = {
@@ -82,32 +115,72 @@ class BluNotificationSystem {
                 tag: "vuscript-chat",
                 renotify: true
             };
+
             const notification = new Notification(`💬 Tin nhắn mới từ ${sender}`, options);
-            notification.onclick = (e) => { e.preventDefault(); window.focus(); notification.close(); };
+
+            notification.onclick = function(event) {
+                event.preventDefault();
+                window.focus(); // Nhấn vào thông báo sẽ mở lại trang web[cite: 1]
+                notification.close();
+            };
         }
     }
 
+    /**
+     * 5. Kích hoạt chế độ gọi đến: Rung máy + Đổ chuông + Thông báo lớn[cite: 1]
+     * @param {string} callerName - Tên người gọi[cite: 1]
+     */
     startIncomingCall(callerName) {
-        if (this.audioRing) this.audioRing.play().catch(() => {});
-        if ("vibrate" in navigator) navigator.vibrate([500, 300, 500, 300, 500]);
+        // Phát chuông gọi[cite: 1]
+        if (this.audioRing) {
+            this.audioRing.play().catch(e => console.log("Trình duyệt chặn phát âm thanh tự động:", e));
+        }
 
+        // Rung thiết bị di động (nếu hỗ trợ Vibration API)[cite: 1]
+        if ("vibrate" in navigator) {
+            navigator.vibrate([500, 300, 500, 300, 500, 300, 500, 300]);
+        }
+
+        // Hiển thị thông báo đẩy dạng khẩn cấp[cite: 1]
         if ("Notification" in window && Notification.permission === "granted") {
             const options = {
                 body: `${callerName} đang gọi cho bạn... Nhấn để nghe máy!`,
                 icon: "https://i.imgur.com/7gK764t.png",
                 tag: "vuscript-call",
-                requireInteraction: true
+                requireInteraction: true // Giữ thông báo hiển thị cho đến khi tương tác[cite: 1]
             };
+
             const callNotification = new Notification(`📞 Cuộc gọi đến từ ${callerName}`, options);
-            callNotification.onclick = (e) => { e.preventDefault(); window.focus(); callNotification.close(); };
+            
+            callNotification.onclick = function(event) {
+                event.preventDefault();
+                window.focus();
+                callNotification.close();
+            };
         }
     }
 
+    /**
+     * 6. Dừng chuông và dừng rung khi cuộc gọi kết thúc hoặc được nghe[cite: 1]
+     */
     stopIncomingCall() {
-        if (this.audioRing) { this.audioRing.pause(); this.audioRing.currentTime = 0; }
-        if ("vibrate" in navigator) navigator.vibrate(0);
+        if (this.audioRing) {
+            this.audioRing.pause();
+            this.audioRing.currentTime = 0;
+        }
+        if ("vibrate" in navigator) {
+            navigator.vibrate(0); // Tắt rung[cite: 1]
+        }
     }
 }
 
-// Khởi tạo hệ thống
+// Khởi tạo hệ thống toàn cục[cite: 1]
 const bluSystem = new BluNotificationSystem();
+
+// Bẫy sự kiện click/chạm đầu tiên trên trang (phòng hờ trường hợp người dùng click vào bất cứ đâu trên web để mở khóa âm thanh)[cite: 1]
+document.addEventListener('click', function triggerSystemOnFirstClick() {
+    if (window.bluSystem) {
+        window.bluSystem.unlockAudioContext();
+    }
+    document.removeEventListener('click', triggerSystemOnFirstClick);
+}, { once: true });
